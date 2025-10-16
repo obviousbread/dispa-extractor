@@ -148,3 +148,6 @@ test_data/
 # OS specific files
 .DS_Store
 Thumbs.db
+
+# Directories with "Направление" prefix
+Направление*/

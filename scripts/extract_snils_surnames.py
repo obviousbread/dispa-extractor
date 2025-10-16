@@ -19,8 +19,8 @@ Usage:
 
 Defaults:
 - ROOT_DIR = current working directory
-- OUT1 (all paths listing) = all_paths.txt in ROOT_DIR
-- OUT2 (result pairs) = snils_surnames.txt in ROOT_DIR
+- OUT1 (all paths listing) = all_paths.txt in script directory
+- OUT2 (result pairs) = snils_surnames.txt in script directory
 
 Notes:
 - Attempts to use openpyxl to read B2 from Excel. If not installed, Excel
@@ -156,11 +156,22 @@ def is_personal_data_excel(filename: str) -> bool:
     )
 
 
-def walk_and_collect(root: str) -> Tuple[List[str], Dict[str, Set[str]]]:
+def walk_and_collect(root: str) -> Tuple[List[str], Dict[str, Set[str]], Set[str]]:
     all_paths: List[str] = []
     mapping: Dict[str, Set[str]] = {}
+    snils_directories: Set[str] = set()
 
-    for dirpath, _dirnames, filenames in os.walk(root):
+    for dirpath, dirnames, filenames in os.walk(root):
+        # Check if current directory is a SNILS directory
+        dirname = os.path.basename(dirpath)
+        if SNILS_RE.match(dirname):
+            snils_directories.add(dirname)
+        
+        # Also check subdirectories
+        for dirname in dirnames:
+            if SNILS_RE.match(dirname):
+                snils_directories.add(dirname)
+
         for fname in filenames:
             full = os.path.join(dirpath, fname)
             all_paths.append(full)
@@ -181,7 +192,7 @@ def walk_and_collect(root: str) -> Tuple[List[str], Dict[str, Set[str]]]:
                 if s_b2:
                     surnames.add(s_b2)
 
-    return all_paths, mapping
+    return all_paths, mapping, snils_directories
 
 
 def write_all_paths(paths: Iterable[str], out_path: str) -> None:
@@ -190,17 +201,43 @@ def write_all_paths(paths: Iterable[str], out_path: str) -> None:
             f.write(p + "\n")
 
 
-def write_snils_surnames(mapping: Dict[str, Set[str]], out_path: str) -> None:
+def write_snils_surnames(mapping: Dict[str, Set[str]], snils_directories: Set[str], out_path: str) -> None:
+    # Список медицинских терминов и других нежелательных записей для исключения
+    excluded_terms = {
+        "Антропометрия", "Артериальное", "Внутриглазное", "Маммография", 
+        "Персональные", "Рентгенография", "Электрокардиография", "Анкета"
+    }
+    
+    # Собираем все SNILS (как с фамилиями, так и без)
+    all_snils = set(mapping.keys()) | snils_directories
+    
     # Sort by SNILS then surname (case-insensitive)
-    rows: List[Tuple[str, str]] = []
-    for snils, surnames in mapping.items():
-        for s in surnames:
-            rows.append((snils, s))
-    rows.sort(key=lambda x: (x[0], x[1].lower()))
+    rows: List[Tuple[str, Optional[str]]] = []
+    for snils in all_snils:
+        # Исключаем записи с фальшивыми СНИЛС (все нули)
+        if snils == "00000000000":
+            continue
+            
+        surnames = mapping.get(snils, set())
+        if surnames:
+            # Есть фамилии для этого SNILS
+            for s in surnames:
+                # Исключаем медицинские термины и другие нежелательные записи
+                if s not in excluded_terms:
+                    rows.append((snils, s))
+        else:
+            # Нет фамилий - добавляем только SNILS
+            rows.append((snils, None))
+    
+    # Сортируем: сначала по SNILS, потом по фамилии (None идет в конец)
+    rows.sort(key=lambda x: (x[0], x[1].lower() if x[1] else "zzz"))
 
     with open(out_path, "w", encoding="utf-8") as f:
         for snils, surname in rows:
-            f.write(f"{snils} {surname}\n")
+            if surname:
+                f.write(f"{snils} {surname}\n")
+            else:
+                f.write(f"{snils}\n")
 
 
 def main(argv: Optional[List[str]] = None) -> int:
@@ -217,13 +254,13 @@ def main(argv: Optional[List[str]] = None) -> int:
         "--paths",
         dest="paths_out",
         default=None,
-        help="Output file for all paths (default: ROOT/all_paths.txt)",
+        help="Output file for all paths (default: script directory/all_paths.txt)",
     )
     parser.add_argument(
         "--out",
         dest="pairs_out",
         default=None,
-        help="Output file for SNILS + surname pairs (default: ROOT/snils_surnames.txt)",
+        help="Output file for SNILS + surname pairs (default: script directory/snils_surnames.txt)",
     )
 
     args = parser.parse_args(argv)
@@ -232,8 +269,11 @@ def main(argv: Optional[List[str]] = None) -> int:
         print(f"[ERROR] Root is not a directory: {root}", file=sys.stderr)
         return 2
 
-    paths_out = args.paths_out or os.path.join(root, "all_paths.txt")
-    pairs_out = args.pairs_out or os.path.join(root, "snils_surnames.txt")
+    # Get the directory where the script is located
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    
+    paths_out = args.paths_out or os.path.join(script_dir, "all_paths.txt")
+    pairs_out = args.pairs_out or os.path.join(script_dir, "snils_surnames.txt")
 
     if openpyxl is None:
         print(
@@ -241,9 +281,12 @@ def main(argv: Optional[List[str]] = None) -> int:
             file=sys.stderr,
         )
 
-    all_paths, mapping = walk_and_collect(root)
+    all_paths, mapping, snils_directories = walk_and_collect(root)
+    
+    print(f"[INFO] Found {len(snils_directories)} SNILS directories (format: 11 digits)")
+    
     write_all_paths(all_paths, paths_out)
-    write_snils_surnames(mapping, pairs_out)
+    write_snils_surnames(mapping, snils_directories, pairs_out)
 
     print(f"[OK] Wrote {len(all_paths)} paths to: {paths_out}")
     print(
