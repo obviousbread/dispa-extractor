@@ -1,0 +1,1587 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Конвертер данных с проверкой по СНИЛС/ЕНП</title>
+    <!-- Подключаем библиотеку SheetJS для экспорта в Excel -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        
+        .container {
+            background-color: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #555;
+        }
+        
+        textarea {
+            width: 100%;
+            height: 200px;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            resize: vertical;
+            box-sizing: border-box;
+        }
+        
+        textarea:focus {
+            border-color: #007bff;
+            outline: none;
+        }
+        
+        .button-group {
+            text-align: center;
+            margin: 20px 0;
+        }
+        
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 0 10px;
+            transition: background-color 0.3s;
+        }
+        
+        button:hover {
+            background-color: #0056b3;
+        }
+        
+        button:disabled {
+            background-color: #6c757d;
+            cursor: not-allowed;
+        }
+        
+        .verify-btn {
+            background-color: #28a745;
+        }
+        
+        .verify-btn:hover {
+            background-color: #218838;
+        }
+        
+        .copy-btn {
+            background-color: #17a2b8;
+        }
+        
+        .copy-btn:hover {
+            background-color: #138496;
+        }
+        
+        .export-btn {
+            background-color: #fd7e14;
+        }
+        
+        .export-btn:hover {
+            background-color: #e8650e;
+        }
+        
+        .duplicate-btn {
+            background-color: #6f42c1;
+        }
+        
+        .duplicate-btn:hover {
+            background-color: #5a32a3;
+        }
+        
+        .clear-btn {
+            background-color: #6c757d;
+        }
+        
+        .clear-btn:hover {
+            background-color: #545b62;
+        }
+        
+        .result-container {
+            margin-top: 30px;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            background-color: white;
+            font-size: 12px;
+        }
+        
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+            vertical-align: top;
+        }
+        
+        th {
+            background-color: #f8f9fa;
+            font-weight: bold;
+            color: #495057;
+            position: sticky;
+            top: 0;
+        }
+        
+        tr:nth-child(even) {
+            background-color: #f8f9fa;
+        }
+        
+        tr:hover {
+            background-color: #e9ecef;
+        }
+        
+        .status-checking {
+            color: #007bff;
+        }
+        
+        .status-found {
+            color: #28a745;
+        }
+        
+        .status-error {
+            color: #dc3545;
+        }
+        
+        .status-not-found {
+            color: #ffc107;
+        }
+        
+        .duplicate-row {
+            background-color: #fff3cd !important;
+            border-left: 4px solid #ffc107 !important;
+        }
+        
+        .duplicate-group {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        
+        .duplicate-controls {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+            border-left: 4px solid #6f42c1;
+        }
+        
+        .error {
+            color: #dc3545;
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            padding: 10px;
+            border-radius: 5px;
+            margin-top: 10px;
+        }
+        
+        .info {
+            color: #0c5460;
+            background-color: #d1ecf1;
+            border: 1px solid #bee5eb;
+            padding: 10px;
+            border-radius: 5px;
+            margin-top: 10px;
+        }
+        
+        .example {
+            background-color: #f8f9fa;
+            border-left: 4px solid #007bff;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        
+        .example h3 {
+            margin-top: 0;
+            color: #007bff;
+        }
+        
+        .stats {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background-color: #f0f0f0;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background-color: #007bff;
+            transition: width 0.3s ease;
+        }
+        
+        .verification-controls {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        
+        .table-container {
+            max-height: 600px;
+            overflow: auto;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Конвертер данных с проверкой по СНИЛС/ЕНП</h1>
+        
+        <div class="example">
+            <h3>Пример формата данных:</h3>
+            <pre>01459093225    Сидоров
+02347711234    Иванов
+115-171-030 38    Иванов
+125-473-857 75    Сидоров
+7750520882001336    Петрова
+4756430891000166    Смирнова
+01453013215, Сидорова
+02347723234,Иванова
+02347743234 ,Смирнова
+02347713234   ;          Сидорова
+7750520232001336, Иванова
+4756420431000166,Сидорова
+2814123456 Иванов
+2814 123456 Иванов
+14184634157 Афанасьева Регина Игоревна 04.10.2000
+00917302221 Ахметшина Лариса Генадьевна 15.10.1962
+01082597228 Багаутдинов Рамиль Мухаметович 16.07.1955</pre>
+            <p><strong>Поддерживаемые форматы:</strong></p>
+            <ul>
+                <li><strong>СНИЛС</strong> (11 цифр) и фамилия через пробелы или табуляцию</li>
+                <li><strong>ЕНП</strong> (16 цифр) и фамилия через пробелы или табуляцию</li>
+                <li><strong>Паспорт РФ</strong> (10 цифр: серия 4 цифры + номер 6 цифр) и фамилия</li>
+                <li>СНИЛС в формате xxx-xxx-xxx xx и фамилия</li>
+                <li>Паспорт в формате xxxx xxxxxx и фамилия</li>
+                <li>Документы и фамилия через запятую (с пробелами или без)</li>
+                <li>Документы и фамилия через точку с запятой</li>
+                <li>Строки только с номером документа (фамилия будет пустой)</li>
+                <li><strong>Полные данные пациента</strong> - из строк вида "СНИЛС Фамилия Имя Отчество Дата" автоматически извлекается только СНИЛС и фамилия</li>
+                <li>Автоматическое определение типа документа по количеству цифр</li>
+                <li>Автоматическое удаление лишних пробелов и разделителей</li>
+                <li>Автоматическое удаление пустых строк</li>
+                <li>Автоматическая проверка через сервис ФЕРЗ</li>
+                <div><b>При предоставлении ТОЛЬКО данных по документу БЕЗ УКАЗАНИЯ фамилии пациента, будет использовано значение "Не указано" и данные по пациенту найдены НЕ БУДУТ. Это связано с особенностями работы сервиса ФЕРЗ</b></div>
+            </ul>
+        </div>
+        
+        <div class="form-group">
+            <label for="dataInput">Вставьте данные:</label>
+            <textarea id="dataInput" placeholder="Вставьте данные в формате: СНИЛС/ЕНП/Паспорт фамилия"></textarea>
+        </div>
+        
+        <div class="button-group">
+            <button onclick="convertToTable()">Преобразовать в таблицу</button>
+            <button class="verify-btn" onclick="verifyAllData()" disabled id="verifyBtn">Проверить данные по ФЕРЗ</button>
+            <button class="copy-btn" onclick="copyTableData()" disabled id="copyBtn">Скопировать данные таблицы</button>
+            <button class="export-btn" onclick="exportToExcel()" disabled id="exportBtn">Экспорт в Excel</button>
+            <button class="duplicate-btn" onclick="checkDuplicates()" disabled id="duplicateBtn">Проверка на дубликаты</button>
+            <button class="clear-btn" onclick="clearAll()">Очистить всё</button>
+        </div>
+        
+        <div class="verification-controls" id="verificationControls" style="display: none;">
+            <h4>Прогресс проверки:</h4>
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill" style="width: 0%;"></div>
+            </div>
+            <div id="progressText">Готов к проверке</div>
+            <button onclick="stopVerification()" id="stopBtn" disabled>Остановить проверку</button>
+        </div>
+        
+        <div id="resultContainer" class="result-container"></div>
+    </div>
+
+    <script>
+        // Глобальные переменные
+        let globalData = [];
+        let verificationInProgress = false;
+        let currentVerificationIndex = 0;
+        let shouldStopVerification = false;
+        
+        // Функции из search.html для работы с ФЕРЗ
+        function createXmlHttpRequest() {
+            var xmlhttp;
+            try {
+                xmlhttp = new ActiveXObject("Msxml2.XMLHTTP");
+            }
+            catch (e) {
+                try {
+                    xmlhttp = new ActiveXObject("Microsoft.XMLHTTP");
+                }
+                catch (E) {
+                    xmlhttp = false;
+                }
+            }
+            if (!xmlhttp && typeof XMLHttpRequest != 'undefined') {
+                xmlhttp = new XMLHttpRequest();
+            }
+            return xmlhttp;
+        }
+        
+        function Request(opts) {
+            var MODE_XDR = 1;
+            var MODE_XHR = 2;
+            return {
+                url: opts.url,
+                data: opts.data,
+                on_success: opts.onSuccess,
+                on_error: opts.onError,
+                on_abort: opts.onAbort,
+                hr_mode: undefined,
+                hr: null,
+
+                go: function () {
+                    var that = this;
+                    if (!!window.XDomainRequest) {
+                        that.hr_mode = MODE_XDR;
+                        that.hr = new window.XDomainRequest();
+                    }
+                    else {
+                        that.hr_mode = MODE_XHR;
+                        that.hr = createXmlHttpRequest();
+                    }
+                    var hr = that.hr;
+                    try {
+                        if ('onload' in hr && 'onerror' in hr) {
+                            hr.onload = function () {
+                                if (!('status' in hr)) {
+                                    that.on_success(hr.responseText);
+                                }
+                                else {
+                                    if (hr.status === 200) {
+                                        that.on_success(hr.responseText);
+                                    }
+                                    else {
+                                        var msg = (hr.status || '') + ' ' + (hr.statusText || '');
+                                        that.on_error(msg);
+                                    }
+                                }
+                            }
+                            hr.onerror = function (e) {
+                                var msg = (hr.status || '') + ' ' + (hr.statusText || '');
+                                that.on_error(msg.replace(' ', ''));
+                            }
+                            if (hr.onabort)
+                                hr.onabort = function () { that.on_abort(); }
+                        }
+                        else {
+                            hr.onreadystatechange = function () {
+                                if (hr.readyState === 4) {
+                                    if (hr.status === 200) {
+                                        that.on_success(hr.responseText);
+                                    }
+                                    else {
+                                        console.log("Caught non-200 response " + hr.status + ' ' + hr.statusText);
+                                        that.on_error(hr.status + ' ' + hr.statusText);
+                                    }
+                                }
+                            }
+                        }
+                        //
+                        hr.open('POST', that.url, true);
+                        if ('setRequestHeader' in hr)
+                            hr.setRequestHeader('CONTENT-TYPE', 'application/soap+xml;charset=UTF-8');
+                        window.setTimeout(function () { hr.send(that.data); }, 1);
+                    }
+                    catch (e) {
+                        that.on_error(e.message || e.what);
+                    }
+                },
+                abort: function () {
+                    var that = this;
+                    that.hr && that.hr.abort();
+                    if (!that.hr.onabort)
+                        that.on_abort();
+                },
+            };
+        }
+        
+        function buildSoapMessageForFed(login, psw, fam, doc, doc_type, msg_id) {
+            var vers = '3';
+            var ns = 'https://support.arhofoms.ru/ws/people-search/xsd';
+            var env = '<?xml version="1.0" encoding="utf-8"?>\n\
+                <soap:Envelope xmlns:soap="http://www.w3.org/2003/05/soap-envelope" \n\
+                xmlns:v1="https://support.arhofoms.ru/ws/svc/xsd/v1-request" \n\
+                xmlns:xsd="'+ ns + '">\n\
+           <soap:Header>\n\
+              <v1:message-id>'+ msg_id + '</v1:message-id>\n\
+              <v1:tag><client>tfoms-client-fed</client></v1:tag>\n\
+              <v1:auth>\n\
+                  <v1:username>'+ login + '</v1:username>\n\
+                  <v1:password>'+ psw + '</v1:password>\n\
+              </v1:auth>\n\
+           </soap:Header>';
+
+            env += '<soap:Body><xsd:FindPersonFed_v'+vers+'_request> \n\
+                                <surname>'+ fam + '</surname> \n\
+                                <doc_num>'+ doc + '</doc_num> \n\
+                                <doc_type>'+ doc_type + '</doc_type> \n\
+                             </xsd:FindPersonFed_v'+vers+'_request> \n\
+                             </soap:Body>\n';
+            env += '</soap:Envelope>';
+
+            return env;
+        }
+        
+        function genUUIDv4() {
+            return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+                var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+                return v.toString(16);
+            });
+        }
+        
+        function parseXmlResponse(xml_val) {
+            if (!xml_val || xml_val.replace(/^\s+|\s+$/g, '').length === 0)
+                return { error: "Пустой ответ с сервера" };
+
+            var xml, parser;
+            if (window.DOMParser) {
+                parser = new DOMParser();
+                xml = parser.parseFromString(xml_val, "text/xml");
+            } else {
+                xml = new ActiveXObject("Microsoft.XMLDOM");
+                xml.async = false;
+                xml.loadXML(xml_val);
+            }
+            
+            var errorCount = xml.getElementsByTagNameNS("http://www.w3.org/2003/05/soap-envelope", "Fault").length;
+            if (errorCount !== 0) {
+                var err_text = xml.getElementsByTagNameNS("http://www.w3.org/2003/05/soap-envelope", "Text")[0].textContent;
+                return { error: err_text };
+            }
+            
+            try {
+                var ter_str = xml.getElementsByTagName("ter_str")[0].childNodes[0].nodeValue;
+                var smo_name = xml.getElementsByTagName('smo')[0].childNodes[0].nodeValue;
+                var enp = xml.getElementsByTagName('enp')[0].childNodes[0].nodeValue;
+                var date_begin = xml.getElementsByTagName('date_begin')[0].childNodes[0].nodeValue;
+                var date_close = (xml.getElementsByTagName('date_close').length === 0) ? '' : xml.getElementsByTagName('date_close')[0].childNodes[0].nodeValue;
+                var policy_type = xml.getElementsByTagName('policy_type')[0].childNodes[0].nodeValue;
+                var pol_ser_num = xml.getElementsByTagName('policy_series_number')[0];
+                var policy_series_number = pol_ser_num.childNodes.length ? pol_ser_num.childNodes[0].nodeValue : "";
+                
+                // Форматирование дат
+                if (date_begin && date_begin.length > 0) {
+                    const day = date_begin.toString().slice(-2);
+                    const month = date_begin.toString().slice(5, 7);
+                    const year = date_begin.toString().slice(0, 4);
+                    date_begin = `${day}.${month}.${year}`;
+                }
+                
+                if (date_close && date_close.length > 0) {
+                    const dayC = date_close.toString().slice(-2);
+                    const monthC = date_close.toString().slice(5, 7);
+                    const yearC = date_close.toString().slice(0, 4);
+                    date_close = `${dayC}.${monthC}.${yearC}`;
+                }
+                
+                // Парсинг прикреплений
+                var attachments = [];
+                var att_list = xml.getElementsByTagName('attachments')[0];
+                if (att_list) {
+                    for (var ia = 0; ia < att_list.childNodes.length; ++ia) {
+                        var a = att_list.childNodes[ia];
+                        var att = {};
+                        for (var n = 0; n < a.childNodes.length; ++n) {
+                            var nn = a.childNodes[n].nodeName;
+                            var nv = a.childNodes[n].childNodes[0].nodeValue;
+                            att[nn] = nv;
+                        }
+                        attachments.push(att);
+                    }
+                }
+                
+                var attachment_info = '';
+                if (attachments.length > 0) {
+                    attachment_info = attachments.map(function(att) {
+                        var info = 'с ' + att.valid_from;
+                        if (att.valid_till) info += ' по ' + att.valid_till;
+                        info += ' ' + att.code + ' ' + att.name;
+                        return info;
+                    }).join('; ');
+                }
+                
+                return {
+                    success: true,
+                    ter_str: ter_str,
+                    smo_name: smo_name,
+                    enp: enp,
+                    date_begin: date_begin,
+                    date_close: date_close,
+                    policy_type: policy_type,
+                    policy_series_number: policy_series_number,
+                    attachments: attachment_info
+                };
+            } catch (e) {
+                return { error: "Ошибка парсинга ответа: " + e.message };
+            }
+        }
+        
+        function convertToTable() {
+            const input = document.getElementById('dataInput').value.trim();
+            const resultContainer = document.getElementById('resultContainer');
+            
+            if (!input) {
+                resultContainer.innerHTML = '<div class="error">Пожалуйста, введите данные для преобразования.</div>';
+                return;
+            }
+            
+            try {
+                const lines = input.split('\n').filter(line => line.trim() !== '');
+                const data = [];
+                let errors = [];
+                
+                lines.forEach((line, index) => {
+                    const trimmedLine = line.trim();
+                    if (trimmedLine) {
+                        const result = parseLineAdvanced(trimmedLine);
+                        
+                        if (result.error) {
+                            errors.push(`Строка ${index + 1}: "${trimmedLine}" - ${result.error}`);
+                        } else {
+                            data.push({ 
+                                docNumber: result.docNumber,
+                                docType: result.docType,
+                                surname: result.surname,
+                                firstName: result.firstName || '',
+                                middleName: result.middleName || '',
+                                birthDate: result.birthDate || '',
+                                status: 'Не проверен',
+                                ter_str: '',
+                                smo_name: '',
+                                enp: '',
+                                date_begin: '',
+                                date_close: '',
+                                policy_type: '',
+                                policy_series_number: '',
+                                attachments: ''
+                            });
+                        }
+                    }
+                });
+                
+                if (data.length === 0) {
+                    resultContainer.innerHTML = '<div class="error">Не найдено корректных данных для преобразования.</div>';
+                    return;
+                }
+                
+                globalData = data;
+                
+                // Создаем таблицу
+                let html = '';
+                
+                if (errors.length > 0) {
+                    html += '<div class="error"><strong>Предупреждения:</strong><ul>';
+                    errors.forEach(error => {
+                        html += `<li>${error}</li>`;
+                    });
+                    html += '</ul></div>';
+                }
+                
+                html += `<div class="stats">
+                    <strong>Статистика:</strong> Обработано ${data.length} записей из ${lines.length} строк
+                </div>`;
+                
+                html += '<div class="table-container">';
+                html += `
+                <table id="dataTable">
+                    <thead>
+                        <tr>
+                            <th>№</th>
+                            <th>Документ</th>
+                            <th>Фамилия</th>
+                            <th>Имя</th>
+                            <th>Отчество</th>
+                            <th>Дата рождения</th>
+                            <th>Статус</th>
+                            <th>Территория страхования</th>
+                            <th>СМО</th>
+                            <th>ЕНП</th>
+                            <th>Дата начала</th>
+                            <th>Дата окончания</th>
+                            <th>Тип полиса</th>
+                            <th>Серия и номер полиса</th>
+                            <th>Прикрепление</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody">
+                `;
+                
+                data.forEach((item, index) => {
+                    html += `
+                        <tr id="row-${index}">
+                            <td>${index + 1}</td>
+                            <td>${formatDocument(item.docNumber, item.docType)}</td>
+                            <td>${item.surname || '<em>не указана</em>'}</td>
+                            <td>${item.firstName || '<em>не указано</em>'}</td>
+                            <td>${item.middleName || '<em>не указано</em>'}</td>
+                            <td>${item.birthDate || '<em>не указана</em>'}</td>
+                            <td class="status-column">${item.status}</td>
+                            <td class="ter-str-column"></td>
+                            <td class="smo-name-column"></td>
+                            <td class="enp-column"></td>
+                            <td class="date-begin-column"></td>
+                            <td class="date-close-column"></td>
+                            <td class="policy-type-column"></td>
+                            <td class="policy-series-column"></td>
+                            <td class="attachments-column"></td>
+                        </tr>
+                    `;
+                });
+                
+                html += `
+                    </tbody>
+                </table>
+                </div>
+                `;
+                
+                resultContainer.innerHTML = html;
+                
+                // Активируем кнопки
+                document.getElementById('verifyBtn').disabled = false;
+                document.getElementById('copyBtn').disabled = false;
+                document.getElementById('exportBtn').disabled = false;
+                document.getElementById('duplicateBtn').disabled = false;
+                
+            } catch (error) {
+                resultContainer.innerHTML = `<div class="error">Ошибка при обработке данных: ${error.message}</div>`;
+            }
+        }
+        
+        // Продвинутая функция для парсинга строки с различными разделителями и форматами
+        function parseLineAdvanced(line) {
+            // Удаляем лишние пробелы в начале и конце
+            const trimmedLine = line.trim();
+            
+            if (!trimmedLine) {
+                return { error: "Пустая строка" };
+            }
+            
+            // Находим последовательность цифр в начале строки (номер документа)
+            const docMatch = trimmedLine.match(/^(\d[\d\s\-]*\d|\d+)/);
+            if (!docMatch) {
+                return { error: "Не найден номер документа в начале строки" };
+            }
+            
+            // Извлекаем только цифры из найденного номера документа
+            const docDigits = docMatch[0].match(/\d/g);
+            
+            if (!docDigits || docDigits.length < 10) {
+                return { 
+                    error: `Документ должен содержать не менее 10 цифр (найдено ${docDigits ? docDigits.length : 0} цифр)` 
+                };
+            }
+            
+            // Определяем тип документа и извлекаем номер
+            let docNumber, docType, digitCount;
+            
+            if (docDigits.length >= 16) {
+                // 16 или больше цифр - это ЕНП
+                docNumber = docDigits.slice(0, 16).join('');
+                docType = 4; // ЕНП
+                digitCount = 16;
+            } else if (docDigits.length >= 11) {
+                // От 11 до 15 цифр - это СНИЛС
+                docNumber = docDigits.slice(0, 11).join('');
+                docType = 3; // СНИЛС
+                digitCount = 11;
+            } else if (docDigits.length >= 10) {
+                // 10 цифр - это паспорт РФ (серия 4 цифры + номер 6 цифр)
+                docNumber = docDigits.slice(0, 10).join('');
+                docType = 1; // Паспорт РФ
+                digitCount = 10;
+            } else {
+                return { 
+                    error: `Недостаточно цифр для определения типа документа (найдено ${docDigits.length} цифр)` 
+                };
+            }
+            
+            // Теперь нужно найти все компоненты данных
+            
+            // Находим позицию окончания номера документа более точно
+            // Ищем последовательность нужного количества цифр в начале строки
+            let docEndPos = 0;
+            let foundDigits = 0;
+            
+            for (let i = 0; i < trimmedLine.length; i++) {
+                if (/\d/.test(trimmedLine[i])) {
+                    foundDigits++;
+                    if (foundDigits === digitCount) {
+                        // Найдены все цифры документа, ищем первый неразделительный символ после них
+                        docEndPos = i + 1;
+                        // Пропускаем пробелы и разделители сразу после номера документа
+                        while (docEndPos < trimmedLine.length && /[\s\-]/.test(trimmedLine[docEndPos])) {
+                            docEndPos++;
+                        }
+                        break;
+                    }
+                } else if (foundDigits > 0 && !/[\s\-]/.test(trimmedLine[i])) {
+                    // Если встретили не-цифру и не-разделитель после начала поиска цифр документа,
+                    // значит последовательность цифр документа закончилась
+                    break;
+                }
+            }
+            
+            // Извлекаем текст после номера документа
+            let remainingText = trimmedLine.substring(docEndPos);
+            
+            // Очищаем от различных разделителей и пробелов в начале
+            // Поддерживаемые разделители: пробелы, табуляция, запятая, точка с запятой
+            remainingText = remainingText.replace(/^[\s,;]+/, '').trim();
+            
+            // Если после очистки что-то осталось, извлекаем все компоненты
+            let surname = '';
+            let firstName = '';
+            let middleName = '';
+            let birthDate = '';
+            
+            if (remainingText) {
+                // Разбиваем оставшийся текст на части
+                const parts = remainingText.split(/\s+/);
+                
+                // Извлекаем остальные компоненты
+                let cyrillicWords = [];
+                
+                for (let part of parts) {
+                    // Проверяем, является ли часть датой (формат DD.MM.YYYY)
+                    if (/^\d{2}\.\d{2}\.\d{4}$/.test(part)) {
+                        birthDate = part;
+                    } else if (/[а-яёА-ЯЁ]/.test(part)) {
+                        cyrillicWords.push(part);
+                    }
+                }
+                
+                // Назначаем фамилию, имя и отчество из кириллических слов
+                if (cyrillicWords.length >= 1) surname = cyrillicWords[0];
+                if (cyrillicWords.length >= 2) firstName = cyrillicWords[1];
+                if (cyrillicWords.length >= 3) middleName = cyrillicWords[2];
+            }
+            
+            return {
+                docNumber: docNumber,
+                docType: docType,
+                surname: surname,
+                firstName: firstName,
+                middleName: middleName,
+                birthDate: birthDate
+            };
+        }
+        
+        // Вспомогательная функция для проверки, отделены ли цифры разделителем
+        function isDigitsSeparated(line, digitPosition) {
+            let digitCount = 0;
+            for (let i = 0; i < line.length; i++) {
+                if (/\d/.test(line[i])) {
+                    digitCount++;
+                    if (digitCount === digitPosition) {
+                        // Проверяем следующий символ после нужной позиции
+                        return i + 1 >= line.length || /[\s,;]/.test(line[i + 1]);
+                    }
+                }
+            }
+            return true;
+        }
+        
+        function checkDuplicates() {
+            if (globalData.length === 0) {
+                alert('Сначала преобразуйте данные в таблицу');
+                return;
+            }
+            
+            // Находим дубликаты по СНИЛС
+            const duplicateGroups = findDuplicates();
+            
+            if (duplicateGroups.length === 0) {
+                showDuplicateResults([], 0);
+                return;
+            }
+            
+            // Подсвечиваем дубликаты в таблице
+            highlightDuplicates(duplicateGroups);
+            
+            // Показываем результаты
+            showDuplicateResults(duplicateGroups, getTotalDuplicateCount(duplicateGroups));
+        }
+        
+        function findDuplicates() {
+            const docGroups = {};
+            
+            // Группируем записи по номеру документа
+            globalData.forEach((item, index) => {
+                const docNumber = item.docNumber;
+                if (!docGroups[docNumber]) {
+                    docGroups[docNumber] = [];
+                }
+                docGroups[docNumber].push({ ...item, originalIndex: index });
+            });
+            
+            // Находим группы с дубликатами (больше одной записи)
+            const duplicateGroups = [];
+            Object.keys(docGroups).forEach(docNumber => {
+                if (docGroups[docNumber].length > 1) {
+                    duplicateGroups.push({
+                        docNumber: docNumber,
+                        docType: docGroups[docNumber][0].docType, // Тип документа из первой записи
+                        records: docGroups[docNumber]
+                    });
+                }
+            });
+            
+            return duplicateGroups;
+        }
+        
+        function highlightDuplicates(duplicateGroups) {
+            // Сначала убираем все предыдущие выделения
+            document.querySelectorAll('.duplicate-row').forEach(row => {
+                row.classList.remove('duplicate-row');
+            });
+            
+            // Выделяем строки с дубликатами
+            duplicateGroups.forEach(group => {
+                group.records.forEach(record => {
+                    const row = document.getElementById(`row-${record.originalIndex}`);
+                    if (row) {
+                        row.classList.add('duplicate-row');
+                    }
+                });
+            });
+        }
+        
+        function getTotalDuplicateCount(duplicateGroups) {
+            return duplicateGroups.reduce((total, group) => total + group.records.length, 0);
+        }
+        
+        function showDuplicateResults(duplicateGroups, totalCount) {
+            const resultContainer = document.getElementById('resultContainer');
+            let duplicateHtml = '';
+            
+            if (duplicateGroups.length === 0) {
+                duplicateHtml = `
+                    <div class="duplicate-controls">
+                        <h4>🎉 Результат проверки на дубликаты</h4>
+                        <div class="info">
+                            <strong>Дубликаты не найдены!</strong><br>
+                            Все записи в таблице уникальны по СНИЛС.
+                        </div>
+                    </div>
+                `;
+            } else {
+                duplicateHtml = `
+                    <div class="duplicate-controls">
+                        <h4>⚠️ Найдены дубликаты</h4>
+                        <div class="stats">
+                            <strong>Статистика:</strong> Найдено ${duplicateGroups.length} групп дубликатов, 
+                            всего ${totalCount} записей (${totalCount - duplicateGroups.length} лишних)
+                        </div>
+                        
+                        <div style="margin: 15px 0;">
+                            <button class="verify-btn" onclick="removeDuplicates()" style="margin-right: 10px;">
+                                Удалить дубликаты (оставить первые)
+                            </button>
+                            <button class="clear-btn" onclick="clearDuplicateHighlight()">
+                                Убрать выделение
+                            </button>
+                        </div>
+                `;
+                
+                // Показываем детали дубликатов
+                duplicateGroups.forEach((group, groupIndex) => {
+                    const docTypeName = group.docType === 1 ? 'Паспорт РФ' : 
+                                       group.docType === 3 ? 'СНИЛС' : 'ЕНП';
+                    duplicateHtml += `
+                        <div class="duplicate-group">
+                            <h5>Группа ${groupIndex + 1}: ${docTypeName} ${formatDocument(group.docNumber, group.docType)}</h5>
+                            <table style="font-size: 11px; margin: 5px 0;">
+                                <thead>
+                                    <tr>
+                                        <th>№ строки</th>
+                                        <th>Фамилия</th>
+                                        <th>Статус проверки</th>
+                                        <th>Действие</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                    `;
+                    
+                    group.records.forEach((record, recordIndex) => {
+                        const actionText = recordIndex === 0 ? '<strong>Оставить</strong>' : 'Удалить';
+                        const actionClass = recordIndex === 0 ? 'status-found' : 'status-error';
+                        
+                        duplicateHtml += `
+                            <tr>
+                                <td>${record.originalIndex + 1}</td>
+                                <td>${record.surname || '<em>не указана</em>'}</td>
+                                <td>${record.status || 'Не проверен'}</td>
+                                <td class="${actionClass}">${actionText}</td>
+                            </tr>
+                        `;
+                    });
+                    
+                    duplicateHtml += `
+                                </tbody>
+                            </table>
+                        </div>
+                    `;
+                });
+                
+                duplicateHtml += `</div>`;
+            }
+            
+            // Вставляем результаты в начало контейнера
+            const existingTable = resultContainer.querySelector('.table-container');
+            if (existingTable) {
+                resultContainer.insertBefore(
+                    document.createRange().createContextualFragment(duplicateHtml).firstElementChild,
+                    existingTable
+                );
+            } else {
+                resultContainer.innerHTML = duplicateHtml + resultContainer.innerHTML;
+            }
+        }
+        
+        function removeDuplicates() {
+            if (!confirm('Вы уверены, что хотите удалить дубликаты? Это действие нельзя отменить. Будут оставлены только первые записи из каждой группы дубликатов.')) {
+                return;
+            }
+            
+            const duplicateGroups = findDuplicates();
+            if (duplicateGroups.length === 0) {
+                alert('Дубликаты не найдены');
+                return;
+            }
+            
+            // Собираем индексы записей для удаления (все кроме первых в каждой группе)
+            const indicesToRemove = [];
+            duplicateGroups.forEach(group => {
+                // Пропускаем первую запись (индекс 0), добавляем остальные
+                for (let i = 1; i < group.records.length; i++) {
+                    indicesToRemove.push(group.records[i].originalIndex);
+                }
+            });
+            
+            // Сортируем индексы по убыванию, чтобы удаление не сбивало нумерацию
+            indicesToRemove.sort((a, b) => b - a);
+            
+            // Удаляем записи из globalData
+            indicesToRemove.forEach(index => {
+                globalData.splice(index, 1);
+            });
+            
+            // Обновляем таблицу
+            rebuildTable();
+            
+            // Убираем результаты проверки дубликатов
+            const duplicateControls = document.querySelector('.duplicate-controls');
+            if (duplicateControls) {
+                duplicateControls.remove();
+            }
+            
+            // Показываем уведомление об успешном удалении
+            const resultContainer = document.getElementById('resultContainer');
+            const infoDiv = document.createElement('div');
+            infoDiv.className = 'info';
+            infoDiv.innerHTML = `
+                <strong>Дубликаты удалены!</strong><br>
+                Удалено ${indicesToRemove.length} дублирующихся записей.<br>
+                Осталось ${globalData.length} уникальных записей.
+            `;
+            
+            resultContainer.insertBefore(infoDiv, resultContainer.firstChild);
+            
+            setTimeout(() => {
+                if (infoDiv.parentNode) {
+                    infoDiv.parentNode.removeChild(infoDiv);
+                }
+            }, 5000);
+        }
+        
+        function clearDuplicateHighlight() {
+            document.querySelectorAll('.duplicate-row').forEach(row => {
+                row.classList.remove('duplicate-row');
+            });
+            
+            const duplicateControls = document.querySelector('.duplicate-controls');
+            if (duplicateControls) {
+                duplicateControls.remove();
+            }
+        }
+        
+        function rebuildTable() {
+            if (globalData.length === 0) {
+                document.getElementById('resultContainer').innerHTML = '<div class="info">Все данные были удалены.</div>';
+                document.getElementById('verifyBtn').disabled = true;
+                document.getElementById('copyBtn').disabled = true;
+                document.getElementById('exportBtn').disabled = true;
+                document.getElementById('duplicateBtn').disabled = true;
+                return;
+            }
+            
+            // Обновляем статистику
+            let html = `<div class="stats">
+                <strong>Статистика:</strong> Обработано ${globalData.length} записей
+            </div>`;
+            
+            html += '<div class="table-container">';
+            html += `
+            <table id="dataTable">
+                <thead>
+                    <tr>
+                        <th>№</th>
+                        <th>Документ</th>
+                        <th>Фамилия</th>
+                        <th>Имя</th>
+                        <th>Отчество</th>
+                        <th>Дата рождения</th>
+                        <th>Статус</th>
+                        <th>Территория страхования</th>
+                        <th>СМО</th>
+                        <th>ЕНП</th>
+                        <th>Дата начала</th>
+                        <th>Дата окончания</th>
+                        <th>Тип полиса</th>
+                        <th>Серия и номер полиса</th>
+                        <th>Прикрепление</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody">
+            `;
+            
+            globalData.forEach((item, index) => {
+                html += `
+                    <tr id="row-${index}">
+                        <td>${index + 1}</td>
+                        <td>${formatDocument(item.docNumber, item.docType)}</td>
+                        <td>${item.surname || '<em>не указана</em>'}</td>
+                        <td>${item.firstName || '<em>не указано</em>'}</td>
+                        <td>${item.middleName || '<em>не указано</em>'}</td>
+                        <td>${item.birthDate || '<em>не указана</em>'}</td>
+                        <td class="status-column">${item.status || 'Не проверен'}</td>
+                        <td class="ter-str-column">${item.ter_str || ''}</td>
+                        <td class="smo-name-column">${item.smo_name || ''}</td>
+                        <td class="enp-column">${item.enp || ''}</td>
+                        <td class="date-begin-column">${item.date_begin || ''}</td>
+                        <td class="date-close-column">${item.date_close || ''}</td>
+                        <td class="policy-type-column">${item.policy_type || ''}</td>
+                        <td class="policy-series-column">${item.policy_series_number || ''}</td>
+                        <td class="attachments-column">${item.attachments || ''}</td>
+                    </tr>
+                `;
+            });
+            
+            html += `
+                </tbody>
+            </table>
+            </div>
+            `;
+            
+            document.getElementById('resultContainer').innerHTML = html;
+        }
+        
+        function formatDocument(docNumber, docType) {
+            if (docType === 1) {
+                // Паспорт РФ - форматируем в виде xxxx xxxxxx (серия + номер)
+                if (docNumber.length === 10) {
+                    return docNumber.substring(0, 4) + ' ' + docNumber.substring(4, 10);
+                }
+                return docNumber;
+            } else if (docType === 3) {
+                // СНИЛС - форматируем в виде xxx-xxx-xxx xx
+                if (docNumber.length === 11) {
+                    return docNumber.substring(0, 3) + '-' + docNumber.substring(3, 6) + '-' + docNumber.substring(6, 9) + ' ' + docNumber.substring(9, 11);
+                }
+                return docNumber;
+            } else if (docType === 4) {
+                // ЕНП - не форматируем, оставляем как есть
+                return docNumber;
+            }
+            return docNumber;
+        }
+        
+        // Оставляем старую функцию для совместимости, но теперь она использует новую
+        function formatSnils(snils) {
+            return formatDocument(snils, 3); // Предполагаем что это СНИЛС
+        }
+        
+        async function verifyAllData() {
+            if (globalData.length === 0) {
+                alert('Сначала преобразуйте данные в таблицу');
+                return;
+            }
+            
+            verificationInProgress = true;
+            currentVerificationIndex = 0;
+            shouldStopVerification = false;
+            
+            // Показываем элементы управления
+            document.getElementById('verificationControls').style.display = 'block';
+            document.getElementById('verifyBtn').disabled = true;
+            document.getElementById('stopBtn').disabled = false;
+            
+            // Сбрасываем прогресс
+            updateProgress(0);
+            
+            // Запускаем проверку
+            for (let i = 0; i < globalData.length && !shouldStopVerification; i++) {
+                currentVerificationIndex = i;
+                await verifyRecord(i);
+                updateProgress((i + 1) / globalData.length * 100);
+                
+                // Небольшая пауза между запросами
+                await new Promise(resolve => setTimeout(resolve, 500));
+            }
+            
+            // Завершаем проверку
+            finishVerification();
+        }
+        
+        function verifyRecord(index) {
+            return new Promise((resolve) => {
+                const record = globalData[index];
+                const statusCell = document.querySelector(`#row-${index} .status-column`);
+                
+                // Обновляем статус
+                statusCell.textContent = 'Проверяется...';
+                statusCell.className = 'status-column status-checking';
+                
+                // Формируем SOAP запрос с правильным типом документа
+                const soapMessage = buildSoapMessageForFed(
+                    'ws_public', 
+                    '296', 
+                    record.surname || '', 
+                    record.docNumber, 
+                    record.docType.toString(), // Используем тип документа из записи
+                    genUUIDv4()
+                );
+                
+                // Отправляем запрос
+                const request = new Request({
+                    url: 'https://ws.arhofoms.ru:55566/soap/people-search',
+                    data: soapMessage,
+                    onSuccess: function(result) {
+                        const parsed = parseXmlResponse(result);
+                        updateRecordWithResult(index, parsed);
+                        resolve();
+                    },
+                    onError: function(msg) {
+                        updateRecordWithResult(index, { error: "Ошибка: " + msg });
+                        resolve();
+                    },
+                    onAbort: function() {
+                        updateRecordWithResult(index, { error: "Запрос отменен" });
+                        resolve();
+                    }
+                });
+                
+                request.go();
+            });
+        }
+        
+        function updateRecordWithResult(index, result) {
+            const row = document.getElementById(`row-${index}`);
+            if (!row) return;
+            
+            const statusCell = row.querySelector('.status-column');
+            const terStrCell = row.querySelector('.ter-str-column');
+            const smoNameCell = row.querySelector('.smo-name-column');
+            const enpCell = row.querySelector('.enp-column');
+            const dateBeginCell = row.querySelector('.date-begin-column');
+            const dateCloseCell = row.querySelector('.date-close-column');
+            const policyTypeCell = row.querySelector('.policy-type-column');
+            const policySeriesCell = row.querySelector('.policy-series-column');
+            const attachmentsCell = row.querySelector('.attachments-column');
+            
+            if (result.error) {
+                statusCell.textContent = result.error;
+                statusCell.className = 'status-column status-error';
+            } else if (result.success) {
+                statusCell.textContent = 'Найден';
+                statusCell.className = 'status-column status-found';
+                
+                terStrCell.textContent = result.ter_str || '';
+                smoNameCell.textContent = result.smo_name || '';
+                enpCell.textContent = result.enp || '';
+                dateBeginCell.textContent = result.date_begin || '';
+                dateCloseCell.textContent = result.date_close || '';
+                policyTypeCell.textContent = result.policy_type || '';
+                policySeriesCell.textContent = result.policy_series_number || '';
+                attachmentsCell.textContent = result.attachments || '';
+                
+                // Обновляем глобальные данные
+                globalData[index] = { ...globalData[index], ...result };
+            } else {
+                statusCell.textContent = 'Не найден';
+                statusCell.className = 'status-column status-not-found';
+            }
+        }
+        
+        function updateProgress(percent) {
+            const progressFill = document.getElementById('progressFill');
+            const progressText = document.getElementById('progressText');
+            
+            progressFill.style.width = percent + '%';
+            progressText.textContent = `Проверено: ${currentVerificationIndex + 1} из ${globalData.length} (${Math.round(percent)}%)`;
+        }
+        
+        function stopVerification() {
+            shouldStopVerification = true;
+            document.getElementById('stopBtn').disabled = true;
+            document.getElementById('progressText').textContent = 'Остановка проверки...';
+        }
+        
+        function finishVerification() {
+            verificationInProgress = false;
+            document.getElementById('verifyBtn').disabled = false;
+            document.getElementById('stopBtn').disabled = true;
+            
+            if (shouldStopVerification) {
+                document.getElementById('progressText').textContent = 'Проверка остановлена пользователем';
+            } else {
+                document.getElementById('progressText').textContent = 'Проверка завершена';
+            }
+        }
+        
+        function exportToExcel() {
+            if (globalData.length === 0) {
+                alert('Нет данных для экспорта. Сначала преобразуйте данные в таблицу.');
+                return;
+            }
+            
+            try {
+                // Создаем заголовки таблицы
+                const headers = [
+                    '№',
+                    'Документ',
+                    'Фамилия',
+                    'Имя',
+                    'Отчество',
+                    'Дата рождения',
+                    'Статус',
+                    'Территория страхования',
+                    'СМО',
+                    'ЕНП',
+                    'Дата начала',
+                    'Дата окончания',
+                    'Тип полиса',
+                    'Серия и номер полиса',
+                    'Прикрепление'
+                ];
+                
+                // Создаем данные для экспорта
+                const exportData = [];
+                
+                // Добавляем заголовки
+                exportData.push(headers);
+                
+                // Добавляем данные
+                globalData.forEach((item, index) => {
+                    const row = [
+                        index + 1,
+                        formatDocument(item.docNumber, item.docType),
+                        item.surname || '',
+                        item.firstName || '',
+                        item.middleName || '',
+                        item.birthDate || '',
+                        item.status || 'Не проверен',
+                        item.ter_str || '',
+                        item.smo_name || '',
+                        item.enp || '',
+                        item.date_begin || '',
+                        item.date_close || '',
+                        item.policy_type || '',
+                        item.policy_series_number || '',
+                        item.attachments || ''
+                    ];
+                    exportData.push(row);
+                });
+                
+                // Создаем рабочую книгу
+                const wb = XLSX.utils.book_new();
+                
+                // Создаем лист из данных
+                const ws = XLSX.utils.aoa_to_sheet(exportData);
+                
+                // Настраиваем ширину колонок
+                const colWidths = [
+                    { wch: 5 },   // №
+                    { wch: 15 },  // Документ
+                    { wch: 20 },  // Фамилия
+                    { wch: 15 },  // Имя
+                    { wch: 15 },  // Отчество
+                    { wch: 12 },  // Дата рождения
+                    { wch: 15 },  // Статус
+                    { wch: 25 },  // Территория страхования
+                    { wch: 30 },  // СМО
+                    { wch: 20 },  // ЕНП
+                    { wch: 12 },  // Дата начала
+                    { wch: 12 },  // Дата окончания
+                    { wch: 15 },  // Тип полиса
+                    { wch: 20 },  // Серия и номер полиса
+                    { wch: 40 }   // Прикрепление
+                ];
+                ws['!cols'] = colWidths;
+                
+                // Применяем стиль к заголовкам
+                const headerStyle = {
+                    font: { bold: true, color: { rgb: "FFFFFF" } },
+                    fill: { fgColor: { rgb: "4472C4" } },
+                    alignment: { horizontal: "center", vertical: "center" }
+                };
+                
+                // Применяем стиль к заголовкам (первая строка)
+                for (let col = 0; col < headers.length; col++) {
+                    const cellRef = XLSX.utils.encode_cell({ r: 0, c: col });
+                    if (ws[cellRef]) {
+                        ws[cellRef].s = headerStyle;
+                    }
+                }
+                
+                // Добавляем лист в книгу
+                XLSX.utils.book_append_sheet(wb, ws, "Данные ФЕРЗ");
+                
+                // Создаем имя файла с текущей датой
+                const now = new Date();
+                const dateStr = now.toISOString().slice(0, 10); // YYYY-MM-DD
+                const timeStr = now.toTimeString().slice(0, 8).replace(/:/g, '-'); // HH-MM-SS
+                const filename = `ferz_data_${dateStr}_${timeStr}.xlsx`;
+                
+                // Сохраняем файл
+                XLSX.writeFile(wb, filename);
+                
+                // Показываем уведомление об успешном экспорте
+                const exportBtn = document.getElementById('exportBtn');
+                const originalText = exportBtn.textContent;
+                exportBtn.textContent = 'Экспортировано!';
+                exportBtn.style.backgroundColor = '#28a745';
+                
+                setTimeout(function() {
+                    exportBtn.textContent = originalText;
+                    exportBtn.style.backgroundColor = '#fd7e14';
+                }, 3000);
+                
+                // Показываем информацию пользователю
+                const resultContainer = document.getElementById('resultContainer');
+                const infoDiv = document.createElement('div');
+                infoDiv.className = 'info';
+                infoDiv.innerHTML = `
+                    <strong>Файл Excel успешно создан!</strong><br>
+                    Имя файла: <strong>${filename}</strong><br>
+                    Экспортировано ${globalData.length} записей с заголовками и форматированием.<br>
+                    Файл сохранен в папку загрузок браузера.
+                `;
+                
+                // Вставляем уведомление в начало контейнера результатов
+                resultContainer.insertBefore(infoDiv, resultContainer.firstChild);
+                
+                // Удаляем уведомление через 7 секунд
+                setTimeout(function() {
+                    if (infoDiv.parentNode) {
+                        infoDiv.parentNode.removeChild(infoDiv);
+                    }
+                }, 7000);
+                
+            } catch (error) {
+                console.error('Ошибка при экспорте в Excel:', error);
+                
+                // Проверяем, загружена ли библиотека XLSX
+                if (typeof XLSX === 'undefined') {
+                    alert('Ошибка: библиотека экспорта не загружена. Проверьте подключение к интернету и перезагрузите страницу.');
+                } else {
+                    alert('Произошла ошибка при создании Excel файла: ' + error.message);
+                }
+            }
+        }
+        
+        function copyTableData() {
+            if (globalData.length === 0) {
+                alert('Нет данных для копирования. Сначала преобразуйте данные в таблицу.');
+                return;
+            }
+            
+            try {
+                // Создаем заголовки таблицы
+                const headers = [
+                    '№',
+                    'Документ',
+                    'Фамилия',
+                    'Имя',
+                    'Отчество',
+                    'Дата рождения',
+                    'Статус',
+                    'Территория страхования',
+                    'СМО',
+                    'ЕНП',
+                    'Дата начала',
+                    'Дата окончания',
+                    'Тип полиса',
+                    'Серия и номер полиса',
+                    'Прикрепление'
+                ];
+                
+                // Создаем строки данных
+                const rows = [];
+                
+                // Добавляем заголовок
+                rows.push(headers.join('\t'));
+                
+                // Добавляем данные
+                globalData.forEach((item, index) => {
+                    const row = [
+                        (index + 1).toString(),
+                        formatDocument(item.docNumber, item.docType),
+                        item.surname || '',
+                        item.firstName || '',
+                        item.middleName || '',
+                        item.birthDate || '',
+                        item.status || 'Не проверен',
+                        item.ter_str || '',
+                        item.smo_name || '',
+                        item.enp || '',
+                        item.date_begin || '',
+                        item.date_close || '',
+                        item.policy_type || '',
+                        item.policy_series_number || '',
+                        item.attachments || ''
+                    ];
+                    rows.push(row.join('\t'));
+                });
+                
+                // Объединяем все строки
+                const tableText = rows.join('\n');
+                
+                // Копируем в буфер обмена
+                navigator.clipboard.writeText(tableText).then(function() {
+                    // Показываем уведомление об успешном копировании
+                    const copyBtn = document.getElementById('copyBtn');
+                    const originalText = copyBtn.textContent;
+                    copyBtn.textContent = 'Скопировано!';
+                    copyBtn.style.backgroundColor = '#28a745';
+                    
+                    setTimeout(function() {
+                        copyBtn.textContent = originalText;
+                        copyBtn.style.backgroundColor = '#17a2b8';
+                    }, 2000);
+                    
+                    // Показываем информацию пользователю
+                    const resultContainer = document.getElementById('resultContainer');
+                    const infoDiv = document.createElement('div');
+                    infoDiv.className = 'info';
+                    infoDiv.innerHTML = `
+                        <strong>Данные скопированы в буфер обмена!</strong><br>
+                        Скопировано ${globalData.length} записей с заголовками.<br>
+                        Вы можете вставить данные в Excel, Google Sheets или любой текстовый редактор.
+                    `;
+                    
+                    // Вставляем уведомление в начало контейнера результатов
+                    resultContainer.insertBefore(infoDiv, resultContainer.firstChild);
+                    
+                    // Удаляем уведомление через 5 секунд
+                    setTimeout(function() {
+                        if (infoDiv.parentNode) {
+                            infoDiv.parentNode.removeChild(infoDiv);
+                        }
+                    }, 5000);
+                    
+                }).catch(function(err) {
+                    console.error('Ошибка копирования: ', err);
+                    
+                    // Fallback для старых браузеров
+                    const textArea = document.createElement('textarea');
+                    textArea.value = tableText;
+                    textArea.style.position = 'fixed';
+                    textArea.style.left = '-999999px';
+                    textArea.style.top = '-999999px';
+                    document.body.appendChild(textArea);
+                    textArea.focus();
+                    textArea.select();
+                    
+                    try {
+                        const successful = document.execCommand('copy');
+                        if (successful) {
+                            alert('Данные скопированы в буфер обмена!');
+                        } else {
+                            alert('Не удалось скопировать данные. Попробуйте выделить и скопировать таблицу вручную.');
+                        }
+                    } catch (err) {
+                        alert('Копирование не поддерживается в вашем браузере. Выделите и скопируйте таблицу вручную.');
+                    }
+                    
+                    document.body.removeChild(textArea);
+                });
+                
+            } catch (error) {
+                console.error('Ошибка при подготовке данных для копирования:', error);
+                alert('Произошла ошибка при копировании данных.');
+            }
+        }
+        
+        function clearAll() {
+            document.getElementById('dataInput').value = '';
+            document.getElementById('resultContainer').innerHTML = '';
+            document.getElementById('verifyBtn').disabled = true;
+            document.getElementById('copyBtn').disabled = true;
+            document.getElementById('exportBtn').disabled = true;
+            document.getElementById('duplicateBtn').disabled = true;
+            document.getElementById('verificationControls').style.display = 'none';
+            globalData = [];
+            verificationInProgress = false;
+        }
+        
+        // Обработка Enter + Ctrl для быстрого преобразования
+        document.getElementById('dataInput').addEventListener('keydown', function(e) {
+            if (e.ctrlKey && e.key === 'Enter') {
+                convertToTable();
+            }
+        });
+        
+        // Автоматическое преобразование при вставке данных
+        document.getElementById('dataInput').addEventListener('paste', function(e) {
+            setTimeout(() => {
+                const input = e.target.value.trim();
+                if (input) {
+                    document.getElementById('resultContainer').innerHTML = 
+                        '<div class="info">Данные вставлены. Нажмите "Преобразовать в таблицу" или Ctrl+Enter для обработки.</div>';
+                }
+            }, 100);
+        });
+    </script>
+</body>
+</html>
